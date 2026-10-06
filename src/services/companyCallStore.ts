@@ -265,6 +265,18 @@ class CompanyCallStore {
     return next;
   }
 
+  public deleteCallLog(id: string): CustomerCallLog[] {
+    const next = this.getCallLogs().filter((l) => l.id !== id);
+    this.saveCallLogsLocal(next);
+    this.notify();
+
+    fetch(`/api/calls?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }).catch((err) => console.warn('Neon delete call log error:', err));
+
+    return next;
+  }
+
   public async clearCallLogs(): Promise<void> {
     this.saveCallLogsLocal([]);
     this.notify();

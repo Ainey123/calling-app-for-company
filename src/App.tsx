@@ -93,8 +93,10 @@ export default function App() {
   const [inboundCustomerPhone, setInboundCustomerPhone] = useState('+92 321 8765432');
   const [inboundInquiry, setInboundInquiry] = useState('Inquiring about order status and delivery');
 
-  // Wipe Data Confirmation Modal State
+  // Wipe & Delete Modal States
   const [isWipeModalOpen, setIsWipeModalOpen] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState<CompanyEmployee | null>(null);
+  const [isClearHistoryModalOpen, setIsClearHistoryModalOpen] = useState(false);
 
   // Toast Helper
   const showToast = (message: string, type: 'success' | 'info' | 'error' = 'info') => {
@@ -245,17 +247,36 @@ export default function App() {
     showToast(`Saved employee ${empToSave.name}`, 'success');
   };
 
-  // Delete Employee
-  const handleDeleteEmployee = (id: string, name: string) => {
-    if (employees.length <= 1) {
-      showToast('You must have at least one employee in the company roster.', 'error');
-      return;
+  // Delete Employee Handler (Opens Confirmation Modal)
+  const handleDeleteEmployee = (emp: CompanyEmployee) => {
+    setEmployeeToDelete(emp);
+  };
+
+  // Confirm and Execute Employee Deletion
+  const handleConfirmDeleteEmployee = (emp: CompanyEmployee) => {
+    const updated = companyCallStore.deleteEmployee(emp.id);
+    setEmployees(updated);
+    setEmployeeToDelete(null);
+    if (editingEmployee && editingEmployee.id === emp.id) {
+      setIsEmployeeModalOpen(false);
+      setEditingEmployee(null);
     }
-    if (window.confirm(`Are you sure you want to remove ${name}?`)) {
-      const updated = companyCallStore.deleteEmployee(id);
-      setEmployees(updated);
-      showToast(`Removed ${name} from roster`, 'info');
-    }
+    showToast(`Removed ${emp.name} from roster`, 'info');
+  };
+
+  // Delete Individual Call Log Record
+  const handleDeleteCallLog = (id: string) => {
+    const updated = companyCallStore.deleteCallLog(id);
+    setCallLogs(updated);
+    showToast('Call history record deleted.', 'info');
+  };
+
+  // Clear All Call Logs
+  const handleConfirmClearAllLogs = () => {
+    companyCallStore.clearCallLogs();
+    setCallLogs([]);
+    setIsClearHistoryModalOpen(false);
+    showToast('All customer call history records cleared.', 'info');
   };
 
   // Simulate or Log Incoming Customer Call to Main Company Number
@@ -1010,9 +1031,9 @@ export default function App() {
                       </button>
 
                       <button
-                        onClick={() => handleDeleteEmployee(emp.id, emp.name)}
-                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950/80 text-rose-400 transition cursor-pointer"
-                        title="Delete Employee"
+                        onClick={() => handleDeleteEmployee(emp)}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950/90 hover:border-rose-500/40 border border-transparent text-rose-400 hover:text-rose-300 transition cursor-pointer"
+                        title={`Delete ${emp.name}`}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -1042,16 +1063,12 @@ export default function App() {
 
               {callLogs.length > 0 && (
                 <button
-                  onClick={() => {
-                    if (window.confirm('Clear all call history records?')) {
-                      companyCallStore.clearCallLogs();
-                      setCallLogs([]);
-                      showToast('Call history cleared.', 'info');
-                    }
-                  }}
-                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-950/80 text-rose-300 text-xs font-semibold transition cursor-pointer"
+                  onClick={() => setIsClearHistoryModalOpen(true)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-950/80 hover:text-rose-300 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                  title="Clear all call history"
                 >
-                  Clear History
+                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Clear All History</span>
                 </button>
               )}
             </div>
@@ -1070,7 +1087,8 @@ export default function App() {
                       <th className="p-3">Channel</th>
                       <th className="p-3">Duration</th>
                       <th className="p-3">Notes</th>
-                      <th className="p-3 text-right">Time</th>
+                      <th className="p-3">Time</th>
+                      <th className="p-3 text-right">Delete</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 font-medium">
@@ -1105,8 +1123,18 @@ export default function App() {
                           {log.notes || 'Call completed'}
                         </td>
 
-                        <td className="p-3 text-right text-slate-400 font-mono">
+                        <td className="p-3 text-slate-400 font-mono">
                           {log.timestamp}
+                        </td>
+
+                        <td className="p-3 text-right">
+                          <button
+                            onClick={() => handleDeleteCallLog(log.id)}
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950/90 text-slate-400 hover:text-rose-400 transition cursor-pointer"
+                            title="Delete this call log"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -1236,20 +1264,35 @@ export default function App() {
                 </select>
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsEmployeeModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold"
-                >
-                  Save Employee
-                </button>
+              <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+                {editingEmployee ? (
+                  <button
+                    type="button"
+                    onClick={() => setEmployeeToDelete(editingEmployee)}
+                    className="px-3.5 py-2 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-500/50 text-rose-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                    <span>Delete Employee</span>
+                  </button>
+                ) : (
+                  <div />
+                )}
+
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsEmployeeModalOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition cursor-pointer"
+                  >
+                    Save Employee
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -1292,6 +1335,91 @@ export default function App() {
                 className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold"
               >
                 Yes, Wipe & Start Clean
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* DELETE EMPLOYEE CONFIRMATION MODAL */}
+      {/* ========================================================= */}
+      {employeeToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-rose-500/40 rounded-3xl w-full max-w-md shadow-2xl p-6 space-y-4 animate-fade-in">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0 border border-rose-500/30">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Delete Employee</h3>
+                <p className="text-xs text-rose-300">Remove from company calling directory</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Are you sure you want to remove <strong className="text-white">{employeeToDelete.name}</strong> ({employeeToDelete.role}) from the team?
+            </p>
+
+            <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 text-xs space-y-1 font-mono">
+              <div className="text-slate-400">SIM: <span className="text-emerald-400 font-bold">{employeeToDelete.simNumber}</span></div>
+              <div className="text-slate-400">WhatsApp: <span className="text-teal-400 font-bold">{employeeToDelete.whatsappNumber}</span></div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setEmployeeToDelete(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleConfirmDeleteEmployee(employeeToDelete)}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold cursor-pointer shadow-lg shadow-rose-600/30"
+              >
+                Yes, Delete Employee
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* CLEAR ALL CALL HISTORY CONFIRMATION MODAL */}
+      {/* ========================================================= */}
+      {isClearHistoryModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-rose-500/40 rounded-3xl w-full max-w-md shadow-2xl p-6 space-y-4 animate-fade-in">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0 border border-rose-500/30">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Clear All Call Records?</h3>
+                <p className="text-xs text-rose-300">Wipe past customer call history</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              This will permanently delete all logged customer helpline calls from Neon cloud storage.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setIsClearHistoryModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmClearAllLogs}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold cursor-pointer shadow-lg shadow-rose-600/30"
+              >
+                Yes, Clear All Logs
               </button>
             </div>
           </div>

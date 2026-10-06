@@ -75,6 +75,11 @@ export default async function handler(req: any, res: any) {
     }
 
     if (req.method === 'DELETE') {
+      const id = req.query?.id || req.body?.id;
+      if (id) {
+        await sql`DELETE FROM customer_call_logs WHERE id = ${id};`;
+        return res.status(200).json({ success: true, message: 'Call log deleted', deletedId: id });
+      }
       await sql`DELETE FROM customer_call_logs;`;
       return res.status(200).json({ success: true, message: 'All call logs cleared' });
     }
