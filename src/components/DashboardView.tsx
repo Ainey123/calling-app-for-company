@@ -34,7 +34,8 @@ import {
   ExternalLink,
   ChevronRight,
   PhoneForwarded,
-  Info
+  Info,
+  Smartphone
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { 
@@ -185,6 +186,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Quick Action Buttons */}
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <button
+              onClick={() => onNavigate('sim-calling')}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition cursor-pointer"
+            >
+              <Smartphone className="w-4 h-4" />
+              <span>SIM Calling Station</span>
+            </button>
+
             <button
               onClick={onOpenSoftphone}
               className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition cursor-pointer"
@@ -668,6 +677,60 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Dual-SIM Cellular Dispatch Quick Terminal */}
+          <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/40 border border-emerald-500/30 rounded-2xl p-5 shadow-xl space-y-3 relative overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                  <Smartphone className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-white uppercase tracking-wider">
+                    Dual-SIM Dispatcher
+                  </h2>
+                  <span className="text-[10px] text-emerald-400 font-medium">Cellular Carrier Online</span>
+                </div>
+              </div>
+              <button
+                onClick={() => onNavigate('sim-calling')}
+                className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold cursor-pointer flex items-center gap-1"
+              >
+                <span>Full Station</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Carrier Status Chips */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-emerald-500/20 flex flex-col">
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="font-bold text-emerald-400">SIM 1</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                </div>
+                <div className="font-semibold text-xs text-white mt-0.5 truncate">Jazz Corporate</div>
+                <div className="text-[10px] text-slate-400">4G LTE • 98% Sig</div>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-teal-500/20 flex flex-col">
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="font-bold text-teal-400">SIM 2</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse"></span>
+                </div>
+                <div className="font-semibold text-xs text-white mt-0.5 truncate">Zong Enterprise</div>
+                <div className="text-[10px] text-slate-400">4G LTE • 94% Sig</div>
+              </div>
+            </div>
+
+            {/* Action to Launch SIM Form */}
+            <button
+              onClick={() => onNavigate('sim-calling')}
+              className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/25 transition cursor-pointer"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>Launch SIM Calling Form</span>
+            </button>
           </div>
         </div>
       </div>

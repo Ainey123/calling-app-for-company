@@ -1644,6 +1644,7 @@ export default function App() {
           onOpenCommandMenu={() => setIsCommandMenuOpen(true)}
           currentExtension={currentExtension}
           didNumber={pbxConfig.didNumber}
+          onOpenSimCallingTab={() => setActiveTab('sim-calling')}
         />
 
         {/* Real-time Emergency Outage Broadcast Banner (SuperAdmin Published) */}

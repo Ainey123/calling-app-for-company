@@ -25,7 +25,8 @@ import {
   Lock,
   ShieldAlert,
   Camera,
-  UserCheck
+  UserCheck,
+  Smartphone
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { EmployeeExtension, MissedCallAlert, ScheduledCall, NavigationTab } from '../types';
@@ -61,6 +62,7 @@ interface TopNavProps {
   onOpenCommandMenu?: () => void;
   currentExtension: EmployeeExtension;
   didNumber?: string;
+  onOpenSimCallingTab?: () => void;
 }
 
 export const TopNav: React.FC<TopNavProps> = ({
@@ -92,6 +94,7 @@ export const TopNav: React.FC<TopNavProps> = ({
   onOpenCommandMenu,
   currentExtension,
   didNumber,
+  onOpenSimCallingTab,
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -198,6 +201,23 @@ export const TopNav: React.FC<TopNavProps> = ({
           >
             <PhoneCall className="w-3.5 h-3.5 text-indigo-400" />
             <span>Dialer</span>
+          </button>
+        )}
+
+        {/* Dedicated SIM Calling Quick Launch Button */}
+        {onOpenSimCallingTab && (
+          <button
+            onClick={onOpenSimCallingTab}
+            className={`hidden sm:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold transition border cursor-pointer ${
+              activeTab === 'sim-calling'
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-emerald-500 shadow-md shadow-emerald-600/30 ring-1 ring-emerald-400/50'
+                : 'bg-emerald-950/40 text-emerald-300 border-emerald-600/40 hover:bg-emerald-900/50 hover:text-white'
+            }`}
+            title="Launch Dual-SIM Cellular Dispatch Station"
+          >
+            <Smartphone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span>SIM Calling</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
           </button>
         )}
 
