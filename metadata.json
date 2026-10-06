@@ -1,0 +1,6 @@
+{
+  "name": "FAST Connect - Business Calling & Complaint System",
+  "description": "Enterprise cloud softphone and complaint management platform connecting business calls, extensions, recordings, and vendor dispatch tickets with AI conversation intelligence.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

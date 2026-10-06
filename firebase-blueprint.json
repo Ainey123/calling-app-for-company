@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FAST Connect Firebase Schema",
+  "entities": {
+    "users": {
+      "title": "User",
+      "description": "System operators and officers logged into the PBX platform",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "extension": { "type": "string" },
+        "role": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "email"]
+    },
+    "calls": {
+      "title": "CallRecord",
+      "description": "Real-time call records logged from the softphone dialer or inbound trunk",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "callerNumber": { "type": "string" },
+        "callerName": { "type": "string" },
+        "organization": { "type": "string" },
+        "branch": { "type": "string" },
+        "city": { "type": "string" },
+        "extension": { "type": "string" },
+        "agentName": { "type": "string" },
+        "direction": { "type": "string", "enum": ["inbound", "outbound", "missed", "transferred"] },
+        "timestamp": { "type": "string" },
+        "durationSeconds": { "type": "number" },
+        "status": { "type": "string" },
+        "hasRecording": { "type": "boolean" },
+        "recordingDuration": { "type": "string" },
+        "transcript": { "type": "string" },
+        "linkedTicketId": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "callerNumber", "direction", "timestamp"]
+    },
+    "tickets": {
+      "title": "ComplaintTicket",
+      "description": "Complaint & facility service tickets connected with business calls",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "clientName": { "type": "string" },
+        "organization": { "type": "string" },
+        "branchName": { "type": "string" },
+        "city": { "type": "string" },
+        "clientPhone": { "type": "string" },
+        "clientEmail": { "type": "string" },
+        "category": { "type": "string" },
+        "priority": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "description": { "type": "string" },
+        "assignedExtension": { "type": "string" },
+        "assignedAgentName": { "type": "string" }
+      },
+      "required": ["id", "title", "status", "priority", "createdAt"]
+    },
+    "missedCalls": {
+      "title": "MissedCallAlert",
+      "description": "Missed call alerts recorded in the system",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "callerName": { "type": "string" },
+        "callerNumber": { "type": "string" },
+        "organization": { "type": "string" },
+        "branch": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "extension": { "type": "string" },
+        "isRead": { "type": "boolean" }
+      },
+      "required": ["id", "callerNumber", "timestamp"]
+    },
+    "vendors": {
+      "title": "Vendor",
+      "description": "Verified contractor and technician directory",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "contactPerson": { "type": "string" },
+        "trade": { "type": "string" },
+        "category": { "type": "string" },
+        "phone": { "type": "string" },
+        "city": { "type": "string" },
+        "area": { "type": "string" },
+        "rating": { "type": "number" },
+        "jobsCompleted": { "type": "number" },
+        "avgResponseMinutes": { "type": "number" },
+        "status": { "type": "string" },
+        "emergencyContractor": { "type": "boolean" }
+      },
+      "required": ["id", "name", "phone", "trade"]
+    },
+    "scheduledCalls": {
+      "title": "ScheduledCall",
+      "description": "Scheduled follow-up call appointments and pending reminders for agents",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "callerName": { "type": "string" },
+        "callerNumber": { "type": "string" },
+        "organization": { "type": "string" },
+        "branch": { "type": "string" },
+        "scheduledDate": { "type": "string" },
+        "scheduledTime": { "type": "string" },
+        "notes": { "type": "string" },
+        "assignedExtension": { "type": "string" },
+        "agentName": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "completed", "cancelled"] },
+        "createdAt": { "type": "string" },
+        "reminderSent": { "type": "boolean" }
+      },
+      "required": ["id", "callerName", "callerNumber", "scheduledDate", "scheduledTime", "status"]
+    },
+    "callForwardingRules": {
+      "title": "CallForwardingRule",
+      "description": "Configurable PBX smart call forwarding rules per extension",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "extension": { "type": "string" },
+        "agentName": { "type": "string" },
+        "isEnabled": { "type": "boolean" },
+        "ringTimeoutSeconds": { "type": "number" },
+        "backupExtension": { "type": "string" },
+        "backupAgentName": { "type": "string" },
+        "backupPhoneNumber": { "type": "string" },
+        "finalFallbackDestination": { "type": "string" },
+        "conditions": { "type": "object" },
+        "businessHours": { "type": "object" },
+        "voicemailEnabled": { "type": "boolean" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "extension", "isEnabled", "backupExtension"]
+    },
+    "dailyReports": {
+      "title": "DailyReport",
+      "description": "Employee daily work reporting entries, summary, and admin review audit",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "employeeName": { "type": "string" },
+        "employeeExtension": { "type": "string" },
+        "reportDate": { "type": "string" },
+        "status": { "type": "string", "enum": ["Draft", "Submitted", "Under Review", "Reviewed", "Revision Requested"] },
+        "summaryHighlights": { "type": "string" },
+        "entries": { "type": "array" },
+        "revisions": { "type": "array" },
+        "adminComments": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "employeeId", "reportDate", "status"]
+    },
+    "activityTimeline": {
+      "title": "ActivityTimelineItem",
+      "description": "Chronological audit timeline combining system telephony events and employee work submissions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "employeeName": { "type": "string" },
+        "employeeExtension": { "type": "string" },
+        "eventType": { "type": "string" },
+        "isSystemGenerated": { "type": "boolean" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "badgeText": { "type": "string" }
+      },
+      "required": ["id", "timestamp", "employeeId", "eventType", "isSystemGenerated"]
+    }
+  }
+}

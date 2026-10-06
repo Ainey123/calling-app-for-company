@@ -1,0 +1,50 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Authenticated users and app operations can access PBX and CRM collections
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+    
+    match /calls/{callId} {
+      allow read, write: if true;
+    }
+    
+    match /tickets/{ticketId} {
+      allow read, write: if true;
+    }
+    
+    match /missedCalls/{alertId} {
+      allow read, write: if true;
+    }
+    
+    match /vendors/{vendorId} {
+      allow read, write: if true;
+    }
+    
+    match /extensions/{extId} {
+      allow read, write: if true;
+    }
+    
+    match /scheduledCalls/{schedId} {
+      allow read, write: if true;
+    }
+
+    match /callForwardingRules/{ruleId} {
+      allow read, write: if true;
+    }
+
+    match /dailyReports/{reportId} {
+      allow read, write: if true;
+    }
+
+    match /activityTimeline/{eventId} {
+      allow read, write: if true;
+    }
+    
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
