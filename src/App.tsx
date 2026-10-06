@@ -243,6 +243,37 @@ export default function App() {
     });
   };
 
+  const handleSaveExtension = (updated: EmployeeExtension) => {
+    setExtensions((prev) => {
+      const idx = prev.findIndex((e) => e.id === updated.id);
+      let next: EmployeeExtension[];
+      if (idx >= 0) {
+        next = [...prev];
+        next[idx] = updated;
+      } else {
+        next = [...prev, updated];
+      }
+      liveStore.setExtensions(next);
+      return next;
+    });
+    if (currentExtension.id === updated.id) {
+      setCurrentExtension(updated);
+    }
+    showToast(`Saved employee ${updated.name} (Ext ${updated.extension})`, 'success');
+  };
+
+  const handleDeleteExtension = (extId: string) => {
+    setExtensions((prev) => {
+      const next = prev.filter((e) => e.id !== extId);
+      liveStore.setExtensions(next);
+      if (currentExtension.id === extId && next.length > 0) {
+        setCurrentExtension(next[0]);
+      }
+      return next;
+    });
+    showToast('Employee removed from directory', 'info');
+  };
+
   // Collapsible Sidebar & Mobile Drawer State
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     return localStorage.getItem('fastconnect_sidebar_collapsed') === 'true';
@@ -1835,6 +1866,10 @@ export default function App() {
             onOpenPhotoModal={(ext) => handleOpenPhotoModal(ext)}
             onOpenLoginModal={() => setIsLoginModalOpen(true)}
             onNavigateTab={setActiveTab}
+            onSaveExtension={handleSaveExtension}
+            onDeleteExtension={handleDeleteExtension}
+            onClearAllDatabase={handleClearAllDatabase}
+            onShowToast={showToast}
           />
         )}
 
