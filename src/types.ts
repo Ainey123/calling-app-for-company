@@ -56,6 +56,30 @@ export interface EmployeeExtension {
   };
 }
 
+export interface CompanyEmployee {
+  id: string;
+  name: string;
+  simNumber: string; // Cellular SIM phone number
+  whatsappNumber: string; // WhatsApp phone number
+  role: string;
+  status: 'available' | 'busy' | 'offline';
+  avatar?: string;
+  totalCallsAnswered: number;
+}
+
+export interface CustomerCallLog {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  answeredByEmployeeId?: string;
+  answeredByEmployeeName?: string;
+  channel: 'sim' | 'whatsapp';
+  durationSeconds: number;
+  status: 'answered' | 'missed' | 'rejected';
+  notes: string;
+  timestamp: string;
+}
+
 export type CallOutcome = 
   | 'Quotation Requested'
   | 'Price & Terms Confirmed'
