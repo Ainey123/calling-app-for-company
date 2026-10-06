@@ -9,6 +9,12 @@ import { fileURLToPath } from 'url';
 
 dotenv.config();
 
+import employeesApi from './api/employees';
+import callsApi from './api/calls';
+import companyApi from './api/company';
+import statusApi from './api/status';
+import wipeApi from './api/wipe';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -16,6 +22,13 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json());
+
+// Neon Central PostgreSQL API Endpoints
+app.all('/api/employees', (req, res) => employeesApi(req, res));
+app.all('/api/calls', (req, res) => callsApi(req, res));
+app.all('/api/company', (req, res) => companyApi(req, res));
+app.all('/api/status', (req, res) => statusApi(req, res));
+app.all('/api/wipe', (req, res) => wipeApi(req, res));
 
 // Initialize Gemini Client with server telemetry header
 const apiKey = process.env.GEMINI_API_KEY;
