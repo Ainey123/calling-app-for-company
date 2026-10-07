@@ -416,6 +416,61 @@ export default function App() {
     showToast(`Opening WhatsApp with ${emp.name}...`, 'info');
   };
 
+  // Direct Outbound Call to Customer via SIM
+  const handleCallCustomerSim = () => {
+    if (!inboundCustomerPhone.trim()) {
+      showToast('Please enter customer phone number to dial.', 'error');
+      return;
+    }
+    const cleanTel = inboundCustomerPhone.replace(/[^\d+]/g, '');
+    window.open(`tel:${cleanTel}`, '_self');
+
+    // Log to call history
+    const logItem: CustomerCallLog = {
+      id: `call-out-${Date.now()}`,
+      customerName: inboundCustomerName.trim() || 'Outbound Customer',
+      customerPhone: inboundCustomerPhone.trim(),
+      answeredByEmployeeId: availableEmployees[0]?.id || '',
+      answeredByEmployeeName: availableEmployees[0]?.name || 'Outbound Support',
+      channel: 'sim',
+      durationSeconds: 1,
+      status: 'answered',
+      notes: `Outbound call to customer: ${inboundInquiry.trim() || 'General inquiry'}`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    const nextLogs = companyCallStore.addCallLog(logItem);
+    setCallLogs(nextLogs);
+    showToast(`Launching phone dialer for ${inboundCustomerName || cleanTel}...`, 'info');
+  };
+
+  // Direct Outbound Call / Chat to Customer via WhatsApp
+  const handleCallCustomerWhatsApp = () => {
+    if (!inboundCustomerPhone.trim()) {
+      showToast('Please enter customer phone number to dial.', 'error');
+      return;
+    }
+    const cleanWa = inboundCustomerPhone.replace(/\D/g, '');
+    const message = encodeURIComponent(`Hello ${inboundCustomerName || 'Sir/Madam'}, this is FAST Connect customer support regarding: ${inboundInquiry || 'your inquiry'}.`);
+    window.open(`https://wa.me/${cleanWa}?text=${message}`, '_blank');
+
+    // Log to call history
+    const logItem: CustomerCallLog = {
+      id: `call-out-wa-${Date.now()}`,
+      customerName: inboundCustomerName.trim() || 'Outbound Customer',
+      customerPhone: inboundCustomerPhone.trim(),
+      answeredByEmployeeId: availableEmployees[0]?.id || '',
+      answeredByEmployeeName: availableEmployees[0]?.name || 'Outbound Support',
+      channel: 'whatsapp',
+      durationSeconds: 1,
+      status: 'answered',
+      notes: `Outbound WhatsApp to customer: ${inboundInquiry.trim() || 'General inquiry'}`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    const nextLogs = companyCallStore.addCallLog(logItem);
+    setCallLogs(nextLogs);
+    showToast(`Opening WhatsApp chat/call for ${inboundCustomerName || cleanWa}...`, 'success');
+  };
+
   // Wipe All Demo Data
   const handleConfirmWipeAll = () => {
     companyCallStore.wipeAllToBlank();
@@ -790,20 +845,53 @@ export default function App() {
                   />
                 </div>
 
-                {/* Call Trigger Button */}
-                <div className="pt-2">
+                {/* Outbound & Inbound Call Trigger Buttons */}
+                <div className="pt-2 space-y-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <button
+                      onClick={handleCallCustomerSim}
+                      className="py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-600/20 transition cursor-pointer"
+                      title="Dial customer's real phone number using your phone's SIM"
+                    >
+                      <Smartphone className="w-4 h-4" />
+                      <span>Call Customer (SIM)</span>
+                    </button>
+
+                    <button
+                      onClick={handleCallCustomerWhatsApp}
+                      className="py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-700/20 transition cursor-pointer"
+                      title="Call or message customer directly on WhatsApp"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      <span>Call on WhatsApp</span>
+                    </button>
+                  </div>
+
                   <button
                     onClick={handleStartIncomingCustomerCall}
                     disabled={Boolean(activeCall)}
-                    className={`w-full py-3.5 px-4 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 shadow-xl transition cursor-pointer ${
+                    className={`w-full py-2.5 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 border border-slate-700 transition cursor-pointer ${
                       activeCall
                         ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white shadow-emerald-600/30'
+                        : 'bg-slate-950 hover:bg-slate-800 text-indigo-300 hover:text-white'
                     }`}
+                    title="Simulate an incoming customer call to test automated routing to available agents"
                   >
-                    <PhoneIncoming className="w-5 h-5 animate-pulse" />
-                    <span>Customer Calling Now &rarr; Ring Available Agent</span>
+                    <PhoneIncoming className="w-4 h-4 text-indigo-400" />
+                    <span>Simulate Inbound Call &rarr; Route to Available Agent</span>
                   </button>
+                </div>
+
+                {/* How live calling works tip */}
+                <div className="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 text-xs text-indigo-200 flex items-start gap-2.5">
+                  <Smartphone className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-white block text-[11px]">How Real Customer Calling Works:</span>
+                    <p className="text-[11px] text-slate-300 leading-relaxed">
+                      &bull; <strong>On Mobile (Android/iPhone):</strong> Tap <strong>"Call Customer (SIM)"</strong> to open your phone dialer and call using your SIM card.<br/>
+                      &bull; <strong>On Laptop/PC:</strong> Tap <strong>"Call on WhatsApp"</strong> to call/message over the internet for free, or open this website on your smartphone.
+                    </p>
+                  </div>
                 </div>
               </div>
 
