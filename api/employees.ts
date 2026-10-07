@@ -55,9 +55,10 @@ export default async function handler(req: any, res: any) {
     }
 
     if (req.method === 'DELETE') {
-      const { id } = req.query || req.body;
+      const id = req.query?.id || req.body?.id;
       if (!id) {
-        return res.status(400).json({ error: 'ID is required' });
+        await sql`DELETE FROM company_employees;`;
+        return res.status(200).json({ success: true, message: 'All employees cleared' });
       }
 
       await sql`DELETE FROM company_employees WHERE id = ${id};`;

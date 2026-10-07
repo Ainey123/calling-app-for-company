@@ -153,12 +153,18 @@ class CompanyCallStore {
   public getEmployees(): CompanyEmployee[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.EMPLOYEES);
-      if (data) {
+      if (data !== null) {
         const parsed = JSON.parse(data);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {}
     this.saveEmployeesLocal(DEFAULT_EMPLOYEES);
+    return DEFAULT_EMPLOYEES;
+  }
+
+  public restoreDemoEmployees(): CompanyEmployee[] {
+    this.saveEmployeesLocal(DEFAULT_EMPLOYEES);
+    this.notify();
     return DEFAULT_EMPLOYEES;
   }
 
@@ -288,7 +294,6 @@ class CompanyCallStore {
   // ==================== WIPE ALL DATA ====================
   public async wipeAllToBlank(): Promise<void> {
     try {
-      localStorage.removeItem(STORAGE_KEYS.CALL_LOGS);
       localStorage.setItem(STORAGE_KEYS.CALL_LOGS, JSON.stringify([]));
       localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify([]));
       this.channel?.postMessage({ type: 'WIPE_ALL' });

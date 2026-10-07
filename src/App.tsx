@@ -880,17 +880,34 @@ export default function App() {
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => handleDirectSimCall(emp)}
-                            className="p-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white transition"
+                            className="p-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white transition cursor-pointer"
                             title="Direct SIM Call"
                           >
                             <Smartphone className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => handleDirectWhatsApp(emp)}
-                            className="p-1.5 rounded-lg bg-emerald-700/20 hover:bg-emerald-700 text-emerald-400 hover:text-white transition"
+                            className="p-1.5 rounded-lg bg-emerald-700/20 hover:bg-emerald-700 text-emerald-400 hover:text-white transition cursor-pointer"
                             title="Direct WhatsApp"
                           >
                             <MessageSquare className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleOpenEditEmployee(emp)}
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 transition cursor-pointer"
+                            title={`Edit ${emp.name}`}
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteEmployee(emp);
+                            }}
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950/90 text-rose-400 hover:text-rose-300 transition cursor-pointer"
+                            title={`Delete ${emp.name}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
@@ -936,9 +953,41 @@ export default function App() {
               </div>
             </div>
 
-            {/* Employees Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {employees.map((emp) => (
+            {/* Employees Grid or Empty State */}
+            {employees.length === 0 ? (
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-10 text-center space-y-4">
+                <div className="w-12 h-12 mx-auto rounded-2xl bg-slate-800 text-slate-500 flex items-center justify-center">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">No Employees In Roster</h3>
+                  <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                    All employees have been removed. Add your real team members with their SIM and WhatsApp numbers.
+                  </p>
+                </div>
+                <div className="flex items-center justify-center gap-3">
+                  <button
+                    onClick={handleOpenAddEmployee}
+                    className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Real Employee</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const restored = companyCallStore.restoreDemoEmployees();
+                      setEmployees(restored);
+                      showToast('Demo employees restored.', 'info');
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition cursor-pointer"
+                  >
+                    Restore Demo Team
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {employees.map((emp) => (
                 <div
                   key={emp.id}
                   className={`p-5 rounded-3xl border transition shadow-xl flex flex-col justify-between ${
@@ -1031,7 +1080,10 @@ export default function App() {
                       </button>
 
                       <button
-                        onClick={() => handleDeleteEmployee(emp)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteEmployee(emp);
+                        }}
                         className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950/90 hover:border-rose-500/40 border border-transparent text-rose-400 hover:text-rose-300 transition cursor-pointer"
                         title={`Delete ${emp.name}`}
                       >
@@ -1042,6 +1094,7 @@ export default function App() {
                 </div>
               ))}
             </div>
+            )}
           </div>
         )}
 
@@ -1129,7 +1182,10 @@ export default function App() {
 
                         <td className="p-3 text-right">
                           <button
-                            onClick={() => handleDeleteCallLog(log.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteCallLog(log.id);
+                            }}
                             className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950/90 text-slate-400 hover:text-rose-400 transition cursor-pointer"
                             title="Delete this call log"
                           >
@@ -1268,7 +1324,11 @@ export default function App() {
                 {editingEmployee ? (
                   <button
                     type="button"
-                    onClick={() => setEmployeeToDelete(editingEmployee)}
+                    onClick={() => {
+                      if (editingEmployee) {
+                        handleConfirmDeleteEmployee(editingEmployee);
+                      }
+                    }}
                     className="px-3.5 py-2 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-500/50 text-rose-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5 text-rose-400" />
@@ -1303,7 +1363,7 @@ export default function App() {
       {/* WIPE ALL DEMO DATA CONFIRMATION MODAL */}
       {/* ========================================================= */}
       {isWipeModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-rose-500/40 rounded-3xl w-full max-w-md shadow-2xl p-6 space-y-4 animate-fade-in">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
@@ -1325,14 +1385,14 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setIsWipeModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold"
+                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleConfirmWipeAll}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold"
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold cursor-pointer"
               >
                 Yes, Wipe & Start Clean
               </button>
@@ -1345,7 +1405,7 @@ export default function App() {
       {/* DELETE EMPLOYEE CONFIRMATION MODAL */}
       {/* ========================================================= */}
       {employeeToDelete && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-rose-500/40 rounded-3xl w-full max-w-md shadow-2xl p-6 space-y-4 animate-fade-in">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0 border border-rose-500/30">
@@ -1390,7 +1450,7 @@ export default function App() {
       {/* CLEAR ALL CALL HISTORY CONFIRMATION MODAL */}
       {/* ========================================================= */}
       {isClearHistoryModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-rose-500/40 rounded-3xl w-full max-w-md shadow-2xl p-6 space-y-4 animate-fade-in">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0 border border-rose-500/30">
