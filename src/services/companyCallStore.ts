@@ -1,13 +1,28 @@
-import { CompanyEmployee, CustomerCallLog } from '../types';
+import { CompanyEmployee, CustomerCallLog, FreePbxConnectionConfig } from '../types';
 
 const STORAGE_KEYS = {
   MAIN_NUMBER: 'fastconnect_main_company_number',
   EMPLOYEES: 'fastconnect_company_employees',
   CALL_LOGS: 'fastconnect_customer_call_logs',
   NEON_STATUS: 'fastconnect_neon_status',
+  FREEPBX_CONFIG: 'fastconnect_freepbx_config',
 };
 
 const DEFAULT_MAIN_NUMBER = '+92 (42) 111-327-800';
+
+export const DEFAULT_FREEPBX_CONFIG: FreePbxConnectionConfig = {
+  enabled: true,
+  host: 'pbx.fastengineering.internal',
+  wssPort: 8089,
+  wssPath: '/ws',
+  serverUrl: 'wss://pbx.fastengineering.internal:8089/ws',
+  domain: 'pbx.fastengineering.internal',
+  extension: '101',
+  secret: 'FastConnect@123',
+  displayName: 'Dispatch Desk (101)',
+  stunServer: 'stun:stun.l.google.com:19302',
+  autoConnect: false,
+};
 
 const DEFAULT_EMPLOYEES: CompanyEmployee[] = [
   {
@@ -44,6 +59,7 @@ type SyncCallback = (data: {
   employees: CompanyEmployee[];
   callLogs: CustomerCallLog[];
   isNeonLive: boolean;
+  freepbxConfig: FreePbxConnectionConfig;
 }) => void;
 
 class CompanyCallStore {
@@ -71,9 +87,10 @@ class CompanyCallStore {
     const mainNumber = this.getMainNumber();
     const employees = this.getEmployees();
     const callLogs = this.getCallLogs();
+    const freepbxConfig = this.getFreePbxConfig();
     this.listeners.forEach((cb) => {
       try {
-        cb({ mainNumber, employees, callLogs, isNeonLive: this.isNeonLive });
+        cb({ mainNumber, employees, callLogs, isNeonLive: this.isNeonLive, freepbxConfig });
       } catch (e) {
         console.error(e);
       }
@@ -110,6 +127,9 @@ class CompanyCallStore {
         if (compRes.value.mainNumber) {
           this.setMainNumberLocal(compRes.value.mainNumber);
         }
+        if (compRes.value.freepbxConfig) {
+          this.setFreePbxConfigLocal(compRes.value.freepbxConfig);
+        }
       }
 
       this.isNeonLive = hasNeon;
@@ -145,6 +165,36 @@ class CompanyCallStore {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mainNumber: num }),
+      });
+    } catch {}
+  }
+
+  // ==================== FREEPBX CONFIG ====================
+  public getFreePbxConfig(): FreePbxConnectionConfig {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.FREEPBX_CONFIG);
+      if (data) {
+        return { ...DEFAULT_FREEPBX_CONFIG, ...JSON.parse(data) };
+      }
+    } catch {}
+    return { ...DEFAULT_FREEPBX_CONFIG };
+  }
+
+  public setFreePbxConfigLocal(cfg: FreePbxConnectionConfig) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.FREEPBX_CONFIG, JSON.stringify(cfg));
+      this.channel?.postMessage({ type: 'FREEPBX_CONFIG', data: cfg });
+    } catch {}
+  }
+
+  public async saveFreePbxConfig(cfg: FreePbxConnectionConfig): Promise<void> {
+    this.setFreePbxConfigLocal(cfg);
+    this.notify();
+    try {
+      await fetch('/api/company', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ freepbxConfig: cfg }),
       });
     } catch {}
   }

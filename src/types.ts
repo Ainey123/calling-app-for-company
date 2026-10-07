@@ -569,3 +569,16 @@ export interface SipCallSession {
   callerDisplayName?: string;
 }
 
+export interface FreePbxConnectionConfig {
+  enabled: boolean;
+  host: string;
+  wssPort: number;
+  wssPath: string;
+  serverUrl: string;
+  domain: string;
+  extension: string;
+  secret: string;
+  displayName: string;
+  stunServer: string;
+  autoConnect: boolean;
+}

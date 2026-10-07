@@ -13,25 +13,45 @@ export default async function handler(req: any, res: any) {
   try {
     if (req.method === 'GET') {
       const rows = await sql`
-        SELECT value FROM company_settings WHERE key = 'main_number' LIMIT 1;
+        SELECT key, value FROM company_settings;
       `;
-      const mainNumber = rows.length > 0 ? rows[0].value : '+92 (42) 111-327-800';
-      return res.status(200).json({ mainNumber, source: 'neon' });
+      const settings: Record<string, string> = {};
+      for (const r of rows) {
+        settings[r.key] = r.value;
+      }
+      const mainNumber = settings['main_number'] || '+92 (42) 111-327-800';
+      let freepbxConfig = null;
+      if (settings['freepbx_config']) {
+        try {
+          freepbxConfig = JSON.parse(settings['freepbx_config']);
+        } catch {}
+      }
+      return res.status(200).json({ mainNumber, freepbxConfig, source: 'neon' });
     }
 
     if (req.method === 'POST') {
-      const { mainNumber } = req.body;
-      if (!mainNumber) {
-        return res.status(400).json({ error: 'mainNumber is required' });
+      const { mainNumber, freepbxConfig } = req.body;
+      if (!mainNumber && !freepbxConfig) {
+        return res.status(400).json({ error: 'mainNumber or freepbxConfig is required' });
       }
 
-      await sql`
-        INSERT INTO company_settings (key, value)
-        VALUES ('main_number', ${mainNumber})
-        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
-      `;
+      if (mainNumber) {
+        await sql`
+          INSERT INTO company_settings (key, value)
+          VALUES ('main_number', ${mainNumber})
+          ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+        `;
+      }
 
-      return res.status(200).json({ success: true, mainNumber });
+      if (freepbxConfig) {
+        await sql`
+          INSERT INTO company_settings (key, value)
+          VALUES ('freepbx_config', ${JSON.stringify(freepbxConfig)})
+          ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+        `;
+      }
+
+      return res.status(200).json({ success: true, mainNumber, freepbxConfig });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });

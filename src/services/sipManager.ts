@@ -1,5 +1,5 @@
 import { Web } from 'sip.js';
-import { SipPbxConfig, SipRegistrationState, SipCallSession, EmployeeExtension } from '../types';
+import { SipPbxConfig, SipRegistrationState, SipCallSession, EmployeeExtension, FreePbxConnectionConfig } from '../types';
 
 export interface IncomingSipCallEvent {
   callerNumber: string;
@@ -190,6 +190,48 @@ class SipTelephonyManager {
   }
 
   // =========================================================================
+  // FreePBX Direct Helpers
+  // =========================================================================
+  public async registerFreePbx(cfg: FreePbxConnectionConfig): Promise<void> {
+    this.updateConfig({
+      enabled: true,
+      transport: 'wss',
+      serverUrl: cfg.serverUrl,
+      domain: cfg.domain,
+      stunServer: cfg.stunServer || 'stun:stun.l.google.com:19302',
+      sipSecretDefault: cfg.secret,
+    });
+    this.currentExtension = {
+      id: `ext-${cfg.extension}`,
+      extension: cfg.extension,
+      name: cfg.displayName || `FreePBX Ext ${cfg.extension}`,
+      role: 'FreePBX Station',
+      department: 'Operations',
+      avatar: '',
+      email: '',
+      phone: '',
+      status: 'available',
+      activeCallsToday: 0,
+      avgHandlingSeconds: 0,
+      sipPassword: cfg.secret,
+      sipAuthUser: cfg.extension,
+    };
+    await this.register();
+  }
+
+  public async disconnectFreePbx(): Promise<void> {
+    if (this.simpleUser) {
+      try {
+        await this.simpleUser.unregister();
+        await this.simpleUser.disconnect();
+      } catch {}
+      this.simpleUser = null;
+    }
+    this.notifyStatus('unregistered', 'Disconnected from FreePBX');
+    this.notifySession(null);
+  }
+
+  // =========================================================================
   // Primary Registration Flow
   // =========================================================================
   public async register(): Promise<void> {
@@ -241,42 +283,57 @@ class SipTelephonyManager {
           authorizationUsername: ext.sipAuthUser || ext.extension,
           authorizationPassword: password,
           displayName: ext.name,
+          sessionDescriptionHandlerFactoryOptions: {
+            peerConnectionConfiguration: {
+              iceServers: [{ urls: this.config.stunServer || 'stun:stun.l.google.com:19302' }],
+            },
+          },
         },
         delegate: {
           onServerConnect: () => {
             this.notifyStatus('connecting', `WSS Socket Connected: ${this.config.serverUrl}`);
           },
           onServerDisconnect: (error?: any) => {
-            const msg = error ? `WSS connection notice: ${error.message || error}` : 'Disconnected from PBX server';
+            const msg = error ? `WSS connection notice: ${error.message || error}` : 'Disconnected from FreePBX';
             this.notifyStatus('disconnected', msg);
           },
           onRegistered: () => {
-            this.notifyStatus('registered', `Registered with Asterisk PBX: ${aor}`);
+            this.notifyStatus('registered', `Registered with FreePBX: ${aor}`);
           },
           onUnregistered: () => {
-            this.notifyStatus('unregistered', 'Unregistered from PBX');
+            this.notifyStatus('unregistered', 'Unregistered from FreePBX');
           },
           onCallReceived: async () => {
-            this.notifyStatus('call-in-progress', 'Incoming call from Asterisk PBX trunk...');
+            this.notifyStatus('call-in-progress', 'Incoming call from FreePBX trunk...');
+            let remoteCallerNumber = this.config.didNumber || 'Customer';
+            let remoteCallerName = 'Incoming FreePBX Caller';
+            try {
+              const inv = (this.simpleUser as any)?._session || (this.simpleUser as any)?.session;
+              if (inv?.remoteIdentity) {
+                remoteCallerNumber = inv.remoteIdentity.uri?.user || remoteCallerNumber;
+                remoteCallerName = inv.remoteIdentity.displayName || remoteCallerName;
+              }
+            } catch {}
+
             const sessionData: SipCallSession = {
               sessionId: `sip-${Date.now()}`,
-              remoteTarget: 'PBX Caller',
+              remoteTarget: remoteCallerNumber,
               direction: 'inbound',
               state: 'ringing',
               startTime: Date.now(),
               durationSeconds: 0,
               isMuted: false,
               isHeld: false,
-              callerDisplayName: 'Inbound Customer Trunk',
+              callerDisplayName: remoteCallerName,
             };
             this.notifySession(sessionData);
 
             this.incomingCallSubscribers.forEach((cb) =>
               cb({
-                callerNumber: this.config.didNumber || '+92 42 111-327-800',
-                callerName: 'Direct Inward Trunk',
-                organization: 'Commercial Client',
-                branch: 'External Branch',
+                callerNumber: remoteCallerNumber,
+                callerName: remoteCallerName,
+                organization: 'FreePBX Inbound Trunk',
+                branch: 'Live Telephony',
                 sessionId: sessionData.sessionId,
               })
             );

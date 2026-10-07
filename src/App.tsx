@@ -27,15 +27,27 @@ import {
   Copy,
   Database,
   Cloud,
-  RefreshCw
+  RefreshCw,
+  Server
 } from 'lucide-react';
-import { CompanyEmployee, CustomerCallLog } from './types';
+import { CompanyEmployee, CustomerCallLog, FreePbxConnectionConfig, SipRegistrationState } from './types';
 import { companyCallStore } from './services/companyCallStore';
 import { soundEngine } from './utils/audio';
+import { sipManager } from './services/sipManager';
+import { FreePbxCallingView } from './components/FreePbxCallingView';
 
 export default function App() {
-  // Navigation Tabs: 'dispatch' | 'team' | 'history'
-  const [activeTab, setActiveTab] = useState<'dispatch' | 'team' | 'history'>('dispatch');
+  // Navigation Tabs: 'dispatch' | 'freepbx' | 'team' | 'history'
+  const [activeTab, setActiveTab] = useState<'dispatch' | 'freepbx' | 'team' | 'history'>('dispatch');
+
+  // FreePBX Telephony State
+  const [freepbxConfig, setFreePbxConfig] = useState<FreePbxConnectionConfig>(() => companyCallStore.getFreePbxConfig());
+  const [freePbxStatus, setFreePbxStatus] = useState<SipRegistrationState>(sipManager.getRegistrationState());
+  const [freePbxIncomingCall, setFreePbxIncomingCall] = useState<{
+    callerNumber: string;
+    callerName: string;
+    sessionId: string;
+  } | null>(null);
 
   // Main Company Single Phone Number
   const [mainCompanyNumber, setMainCompanyNumber] = useState<string>(() => companyCallStore.getMainNumber());
@@ -126,11 +138,12 @@ export default function App() {
   // Central Neon Cloud Real-time Poller & Multi-tab Sync
   useEffect(() => {
     // 1. Subscribe to local BroadcastChannel and state notifications
-    const unsubscribe = companyCallStore.subscribe(({ mainNumber, employees: emps, callLogs: logs, isNeonLive }) => {
+    const unsubscribe = companyCallStore.subscribe(({ mainNumber, employees: emps, callLogs: logs, isNeonLive, freepbxConfig: pbxCfg }) => {
       setMainCompanyNumber(mainNumber);
       setEmployees(emps);
       setCallLogs(logs);
       setIsNeonConnected(isNeonLive);
+      if (pbxCfg) setFreePbxConfig(pbxCfg);
     });
 
     // 2. Perform initial fetch from Neon PostgreSQL
@@ -148,6 +161,41 @@ export default function App() {
     return () => {
       unsubscribe();
       clearInterval(poller);
+    };
+  }, []);
+
+  // FreePBX Telephony Subscriptions & Ringing Listener
+  useEffect(() => {
+    const unsubStatus = sipManager.onStatusChange((state) => {
+      setFreePbxStatus(state);
+    });
+
+    const unsubIncoming = sipManager.onIncomingCall((call) => {
+      setFreePbxIncomingCall({
+        callerNumber: call.callerNumber,
+        callerName: call.callerName,
+        sessionId: call.sessionId,
+      });
+      soundEngine.startIncomingRinging();
+    });
+
+    const unsubSession = sipManager.onSessionChange((session) => {
+      if (!session) {
+        setFreePbxIncomingCall(null);
+        soundEngine.stopRinging();
+      }
+    });
+
+    // Auto connect if configured
+    const initialCfg = companyCallStore.getFreePbxConfig();
+    if (initialCfg.autoConnect && initialCfg.host && initialCfg.extension && initialCfg.secret) {
+      sipManager.registerFreePbx(initialCfg).catch(() => {});
+    }
+
+    return () => {
+      unsubStatus();
+      unsubIncoming();
+      unsubSession();
     };
   }, []);
 
@@ -483,6 +531,79 @@ export default function App() {
     showToast(`Opening WhatsApp chat/call for ${inboundCustomerName || cleanWa}...`, 'success');
   };
 
+  // Direct Outbound Call to Customer via FreePBX Trunk
+  const handleCallCustomerFreePbx = async () => {
+    if (!inboundCustomerPhone.trim()) {
+      showToast('Please enter customer phone number to dial.', 'error');
+      return;
+    }
+    if (freePbxStatus !== 'registered') {
+      showToast('FreePBX is not yet connected. Opening FreePBX tab to connect...', 'error');
+      setActiveTab('freepbx');
+      return;
+    }
+
+    try {
+      sipManager.unlockAudio();
+      const targetPhone = inboundCustomerPhone.trim();
+      const targetName = inboundCustomerName.trim() || 'Client Contact';
+      await sipManager.call(targetPhone, targetName);
+      setActiveTab('freepbx');
+      showToast(`Dialing ${targetPhone} via FreePBX SIP trunk...`, 'info');
+
+      // Log to call history
+      const logItem: CustomerCallLog = {
+        id: `call-out-pbx-${Date.now()}`,
+        customerName: targetName,
+        customerPhone: targetPhone,
+        answeredByEmployeeId: availableEmployees[0]?.id || '',
+        answeredByEmployeeName: availableEmployees[0]?.name || `FreePBX Ext ${freepbxConfig.extension}`,
+        channel: 'sim',
+        durationSeconds: 1,
+        status: 'answered',
+        notes: `Outbound FreePBX trunk call: ${inboundInquiry.trim() || 'Customer inquiry'}`,
+        timestamp: new Date().toISOString(),
+      };
+      const nextLogs = companyCallStore.addCallLog(logItem);
+      setCallLogs(nextLogs);
+    } catch (err: any) {
+      showToast(`FreePBX Call failed: ${err.message}`, 'error');
+    }
+  };
+
+  // Answer Incoming FreePBX Trunk Call
+  const handleAnswerFreePbxCall = async () => {
+    try {
+      soundEngine.stopRinging();
+      soundEngine.playConnectedChime();
+      await sipManager.answerCall();
+      setActiveTab('freepbx');
+      setFreePbxIncomingCall(null);
+      showToast('FreePBX call connected.', 'success');
+    } catch (e: any) {
+      showToast(`Answer error: ${e.message}`, 'error');
+    }
+  };
+
+  // Decline Incoming FreePBX Trunk Call
+  const handleDeclineFreePbxCall = async () => {
+    try {
+      soundEngine.stopRinging();
+      soundEngine.playHangupChime();
+      await sipManager.declineCall();
+      setFreePbxIncomingCall(null);
+      showToast('Call declined.', 'info');
+    } catch (e: any) {
+      console.error(e);
+    }
+  };
+
+  // Save FreePBX Configuration
+  const handleSaveFreePbxConfig = async (cfg: FreePbxConnectionConfig) => {
+    setFreePbxConfig(cfg);
+    await companyCallStore.saveFreePbxConfig(cfg);
+  };
+
   // Wipe All Demo Data
   const handleConfirmWipeAll = () => {
     companyCallStore.wipeAllToBlank();
@@ -546,6 +667,21 @@ export default function App() {
           </button>
 
           <button
+            onClick={() => setActiveTab('freepbx')}
+            className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-2 transition cursor-pointer ${
+              activeTab === 'freepbx'
+                ? 'bg-indigo-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Server className="w-4 h-4 text-cyan-400" />
+            <span>FreePBX System</span>
+            {freePbxStatus === 'registered' && (
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            )}
+          </button>
+
+          <button
             onClick={() => setActiveTab('team')}
             className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-2 transition cursor-pointer ${
               activeTab === 'team'
@@ -572,6 +708,31 @@ export default function App() {
 
         {/* Header Action Buttons */}
         <div className="flex items-center gap-2">
+          {/* FreePBX Telephony Status Pill */}
+          <button
+            onClick={() => setActiveTab('freepbx')}
+            className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
+              freePbxStatus === 'registered'
+                ? 'bg-emerald-950/70 hover:bg-emerald-900 border-emerald-500/50 text-emerald-300'
+                : freePbxStatus === 'connecting'
+                ? 'bg-amber-950/70 hover:bg-amber-900 border-amber-500/50 text-amber-300'
+                : 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-400'
+            }`}
+            title="FreePBX WebRTC Telephony Status"
+          >
+            <Server className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="font-bold">
+              {freePbxStatus === 'registered'
+                ? `FreePBX: Ext ${freepbxConfig.extension}`
+                : freePbxStatus === 'connecting'
+                ? 'FreePBX Connecting...'
+                : 'Connect FreePBX'}
+            </span>
+            {freePbxStatus === 'registered' && (
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            )}
+          </button>
+
           {/* Neon Cloud Status Pill */}
           {isNeonConnected ? (
             <button
@@ -859,23 +1020,32 @@ export default function App() {
 
                 {/* Outbound & Inbound Call Trigger Buttons */}
                 <div className="pt-2 space-y-2.5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                     <button
                       onClick={handleCallCustomerSim}
-                      className="py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-600/20 transition cursor-pointer"
+                      className="py-3 px-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-600/20 transition cursor-pointer"
                       title="Dial customer's real phone number using your phone's SIM"
                     >
                       <Smartphone className="w-4 h-4" />
-                      <span>Call Customer (SIM)</span>
+                      <span>Call (SIM)</span>
                     </button>
 
                     <button
                       onClick={handleCallCustomerWhatsApp}
-                      className="py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-700/20 transition cursor-pointer"
+                      className="py-3 px-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 bg-emerald-700 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-700/20 transition cursor-pointer"
                       title="Call or message customer directly on WhatsApp"
                     >
                       <MessageSquare className="w-4 h-4" />
-                      <span>Call on WhatsApp</span>
+                      <span>WhatsApp</span>
+                    </button>
+
+                    <button
+                      onClick={handleCallCustomerFreePbx}
+                      className="py-3 px-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white shadow-lg shadow-indigo-600/20 transition cursor-pointer"
+                      title="Dial customer via FreePBX WebRTC softphone trunk"
+                    >
+                      <Server className="w-4 h-4 text-cyan-300" />
+                      <span>Call (FreePBX)</span>
                     </button>
                   </div>
 
@@ -1024,6 +1194,18 @@ export default function App() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* TAB: FREEPBX WEBRTC PHONE SYSTEM & SOFTPHONE */}
+        {/* ========================================================= */}
+        {activeTab === 'freepbx' && (
+          <FreePbxCallingView
+            config={freepbxConfig}
+            onSaveConfig={handleSaveFreePbxConfig}
+            employees={employees}
+            onShowToast={showToast}
+          />
         )}
 
         {/* ========================================================= */}
@@ -1729,6 +1911,51 @@ export default function App() {
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ========================================================= */}
+      {/* GLOBAL FREEPBX INCOMING CALL RINGING DIALOG */}
+      {/* ========================================================= */}
+      {freePbxIncomingCall && (
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-[90] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-slate-900 border-2 border-emerald-500 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl shadow-emerald-950/70 text-center space-y-6 animate-scale-up">
+            <div className="relative inline-flex items-center justify-center">
+              <span className="animate-ping absolute inline-flex h-20 w-20 rounded-full bg-emerald-400 opacity-75"></span>
+              <div className="w-20 h-20 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-emerald-400 shadow-lg shadow-emerald-500/30">
+                <PhoneIncoming className="w-10 h-10 animate-bounce" />
+              </div>
+            </div>
+
+            <div>
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                Incoming FreePBX Trunk Call
+              </span>
+              <h3 className="text-2xl font-black text-white mt-3">
+                {freePbxIncomingCall.callerName || 'FreePBX Caller'}
+              </h3>
+              <p className="text-base font-mono font-bold text-emerald-300 mt-1">
+                {freePbxIncomingCall.callerNumber}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                onClick={handleAnswerFreePbxCall}
+                className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-950 transition cursor-pointer"
+              >
+                <PhoneCall className="w-4 h-4" />
+                Pick Up Call
+              </button>
+
+              <button
+                onClick={handleDeclineFreePbxCall}
+                className="py-3.5 px-4 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-rose-950 transition cursor-pointer"
+              >
+                <PhoneOff className="w-4 h-4" />
+                Decline
+              </button>
             </div>
           </div>
         </div>
