@@ -131,6 +131,17 @@ export const CallsView: React.FC<CallsViewProps> = ({
     return `${m}m ${s.toString().padStart(2, '0')}s`;
   };
 
+  const formatTime = (ts?: string) => {
+    if (!ts) return '';
+    try {
+      const d = new Date(ts);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+    } catch {}
+    return ts;
+  };
+
   return (
     <div className="w-full max-w-7xl mx-auto space-y-5 min-w-0">
       {/* Top Banner & Stats */}
@@ -500,7 +511,7 @@ export const CallsView: React.FC<CallsViewProps> = ({
                         <span>•</span>
                         <span>Ext {call.extension} ({call.agentName.split(' ')[0]})</span>
                         <span>•</span>
-                        <span>{call.timestamp}</span>
+                        <span>{formatTime(call.timestamp)}</span>
                       </div>
 
                       {call.isForwarded && (
@@ -694,7 +705,7 @@ export const CallsView: React.FC<CallsViewProps> = ({
                         {selectedCallDetails.status} ({formatSeconds(selectedCallDetails.durationSeconds)})
                       </span>
                       <span className="text-[10px] text-slate-400 block font-mono">
-                        {selectedCallDetails.timestamp}
+                        {formatTime(selectedCallDetails.timestamp)}
                       </span>
                     </div>
                   </div>

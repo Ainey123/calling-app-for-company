@@ -119,6 +119,17 @@ export const SimCallingView: React.FC<SimCallingViewProps> = ({
   const [searchLedger, setSearchLedger] = useState('');
   const [copiedNumber, setCopiedNumber] = useState(false);
 
+  const formatTime = (ts?: string) => {
+    if (!ts) return '';
+    try {
+      const d = new Date(ts);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+    } catch {}
+    return ts;
+  };
+
   // Live timer for active SIM call
   useEffect(() => {
     let timer: any = null;
@@ -989,7 +1000,7 @@ export const SimCallingView: React.FC<SimCallingViewProps> = ({
                     {call.recordingDuration || `${call.durationSeconds}s`}
                   </span>
                   <span className="text-[10px] text-slate-400">
-                    {call.timestamp}
+                    {formatTime(call.timestamp)}
                   </span>
                   {call.callOutcome && (
                     <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700">

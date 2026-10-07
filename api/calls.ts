@@ -23,12 +23,24 @@ export default async function handler(req: any, res: any) {
           duration_seconds as "durationSeconds", 
           status, 
           notes, 
-          TO_CHAR(created_at, 'HH12:MI AM') as "timestamp"
+          created_at as "createdAt"
         FROM customer_call_logs
         ORDER BY created_at DESC
         LIMIT 50;
       `;
-      return res.status(200).json({ callLogs: rows, source: 'neon' });
+      const formatted = rows.map((r: any) => ({
+        id: r.id,
+        customerName: r.customerName,
+        customerPhone: r.customerPhone,
+        answeredByEmployeeId: r.answeredByEmployeeId,
+        answeredByEmployeeName: r.answeredByEmployeeName,
+        channel: r.channel,
+        durationSeconds: r.durationSeconds,
+        status: r.status,
+        notes: r.notes,
+        timestamp: r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString(),
+      }));
+      return res.status(200).json({ callLogs: formatted, source: 'neon' });
     }
 
     if (req.method === 'POST') {

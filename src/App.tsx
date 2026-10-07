@@ -175,6 +175,18 @@ export default function App() {
     return `${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+  // Format Call Timestamp in User's Local Time (e.g. "03:15 PM")
+  const formatCallTime = (ts?: string) => {
+    if (!ts) return '';
+    try {
+      const d = new Date(ts);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+    } catch {}
+    return ts;
+  };
+
   // Save Main Helpline Number
   const handleSaveMainNumber = () => {
     if (!tempMainNumber.trim()) return;
@@ -387,7 +399,7 @@ export default function App() {
       durationSeconds: activeCall.durationSeconds || 1,
       status: activeCall.status === 'ringing' ? 'missed' : 'answered',
       notes: activeCall.notes || 'Inbound helpline call resolved.',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: new Date().toISOString(),
     };
 
     const nextLogs = companyCallStore.addCallLog(logItem);
@@ -436,7 +448,7 @@ export default function App() {
       durationSeconds: 1,
       status: 'answered',
       notes: `Outbound call to customer: ${inboundInquiry.trim() || 'General inquiry'}`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: new Date().toISOString(),
     };
     const nextLogs = companyCallStore.addCallLog(logItem);
     setCallLogs(nextLogs);
@@ -464,7 +476,7 @@ export default function App() {
       durationSeconds: 1,
       status: 'answered',
       notes: `Outbound WhatsApp to customer: ${inboundInquiry.trim() || 'General inquiry'}`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: new Date().toISOString(),
     };
     const nextLogs = companyCallStore.addCallLog(logItem);
     setCallLogs(nextLogs);
@@ -1265,7 +1277,7 @@ export default function App() {
                         </td>
 
                         <td className="p-3 text-slate-400 font-mono">
-                          {log.timestamp}
+                          {formatCallTime(log.timestamp)}
                         </td>
 
                         <td className="p-3 text-right">
