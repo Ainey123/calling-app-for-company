@@ -28,7 +28,11 @@ import {
   Database,
   Cloud,
   RefreshCw,
-  Server
+  Server,
+  QrCode,
+  Headphones,
+  Bluetooth,
+  Laptop
 } from 'lucide-react';
 import { CompanyEmployee, CustomerCallLog, FreePbxConnectionConfig, SipRegistrationState } from './types';
 import { companyCallStore } from './services/companyCallStore';
@@ -47,6 +51,13 @@ export default function App() {
     callerNumber: string;
     callerName: string;
     sessionId: string;
+  } | null>(null);
+
+  // Laptop SIM Calling Hub State
+  const [laptopDialTarget, setLaptopDialTarget] = useState<{
+    name: string;
+    phone: string;
+    inquiry?: string;
   } | null>(null);
 
   // Main Company Single Phone Number
@@ -465,7 +476,14 @@ export default function App() {
   // Direct Call to Employee on SIM
   const handleDirectSimCall = (emp: CompanyEmployee) => {
     const cleanTel = emp.simNumber.replace(/[^\d+]/g, '');
-    window.open(`tel:${cleanTel}`, '_self');
+    try {
+      window.open(`tel:${cleanTel}`, '_self');
+    } catch {}
+    setLaptopDialTarget({
+      name: emp.name,
+      phone: emp.simNumber,
+      inquiry: `Employee direct call (${emp.role})`,
+    });
     showToast(`Dialing ${emp.name} on SIM (${emp.simNumber})...`, 'info');
   };
 
@@ -483,7 +501,15 @@ export default function App() {
       return;
     }
     const cleanTel = inboundCustomerPhone.replace(/[^\d+]/g, '');
-    window.open(`tel:${cleanTel}`, '_self');
+    try {
+      window.open(`tel:${cleanTel}`, '_self');
+    } catch {}
+
+    setLaptopDialTarget({
+      name: inboundCustomerName.trim() || 'Outbound Customer',
+      phone: inboundCustomerPhone.trim(),
+      inquiry: inboundInquiry.trim(),
+    });
 
     // Log to call history
     const logItem: CustomerCallLog = {
@@ -1955,6 +1981,139 @@ export default function App() {
               >
                 <PhoneOff className="w-4 h-4" />
                 Decline
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* LAPTOP SIM DIALING & PHONE LINK ASSISTANT MODAL */}
+      {/* ========================================================= */}
+      {laptopDialTarget && (
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-[85] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-slate-900 border border-emerald-500/40 rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl shadow-emerald-950/50 space-y-5 animate-scale-up text-slate-200">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3.5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                  <Laptop className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <span>Laptop SIM Call Hub</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                      Zero Cost
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Dialing: <strong className="text-white">{laptopDialTarget.name}</strong> &bull; <span className="font-mono text-emerald-400">{laptopDialTarget.phone}</span>
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setLaptopDialTarget(null)}
+                className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Calling Options Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Option 1: Windows Phone Link */}
+              <button
+                onClick={() => {
+                  const cleanTel = laptopDialTarget.phone.replace(/[^\d+]/g, '');
+                  window.open(`tel:${cleanTel}`, '_self');
+                  showToast('Opening Windows Phone Link on your laptop...', 'info');
+                }}
+                className="p-4 rounded-2xl bg-gradient-to-br from-indigo-950/80 to-slate-950 border border-indigo-500/40 hover:border-indigo-400 flex flex-col justify-between text-left transition group shadow-md cursor-pointer"
+              >
+                <div>
+                  <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center mb-2.5">
+                    <Headphones className="w-4 h-4" />
+                  </div>
+                  <div className="font-bold text-white text-xs group-hover:text-indigo-300">
+                    Dial on Laptop Headset
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                    Uses Windows Phone Link to make the call using your laptop mic & speakers.
+                  </p>
+                </div>
+                <div className="mt-3 text-[10px] font-bold text-indigo-400 flex items-center gap-1">
+                  <span>Open Phone Link</span> &rarr;
+                </div>
+              </button>
+
+              {/* Option 2: WhatsApp Web Call */}
+              <button
+                onClick={() => {
+                  const cleanWa = laptopDialTarget.phone.replace(/\D/g, '');
+                  window.open(`https://web.whatsapp.com/send?phone=${cleanWa}`, '_blank');
+                  showToast('Opening WhatsApp on laptop...', 'info');
+                }}
+                className="p-4 rounded-2xl bg-gradient-to-br from-emerald-950/80 to-slate-950 border border-emerald-500/40 hover:border-emerald-400 flex flex-col justify-between text-left transition group shadow-md cursor-pointer"
+              >
+                <div>
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-2.5">
+                    <MessageSquare className="w-4 h-4" />
+                  </div>
+                  <div className="font-bold text-white text-xs group-hover:text-emerald-300">
+                    Call on WhatsApp Web
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                    Voice call or message directly in your laptop browser with zero setup.
+                  </p>
+                </div>
+                <div className="mt-3 text-[10px] font-bold text-emerald-400 flex items-center gap-1">
+                  <span>Open WhatsApp Web</span> &rarr;
+                </div>
+              </button>
+            </div>
+
+            {/* Option 3: Instant QR Scan-To-Call */}
+            <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center gap-4">
+              <div className="w-24 h-24 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent('tel:' + laptopDialTarget.phone.replace(/[^\d+]/g, ''))}&size=150x150&bgcolor=020617&color=34d399`}
+                  alt="Scan to call"
+                  className="w-20 h-20 rounded"
+                />
+              </div>
+              <div className="space-y-1 min-w-0">
+                <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+                  <QrCode className="w-3.5 h-3.5" /> Instant Scan-to-Call
+                </span>
+                <p className="text-xs text-slate-300 font-semibold">
+                  Point your mobile phone camera at this QR code
+                </p>
+                <p className="text-[11px] text-slate-400 leading-snug">
+                  Your phone will immediately prompt you to dial <strong>{laptopDialTarget.phone}</strong> on your SIM card without typing!
+                </p>
+              </div>
+            </div>
+
+            {/* How to enable Windows Phone Link on this laptop */}
+            <div className="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/20 text-[11px] space-y-1.5">
+              <div className="font-bold text-indigo-300 flex items-center gap-1.5">
+                <Bluetooth className="w-3.5 h-3.5 text-indigo-400" />
+                Want your laptop to make SIM calls through your headset?
+              </div>
+              <p className="text-slate-300 leading-relaxed">
+                1. On your Windows laptop, open Start Menu and search <strong>"Phone Link"</strong>.<br />
+                2. On your Android / iPhone, open <strong>Link to Windows</strong> and pair via Bluetooth.<br />
+                3. Now, every time you click <em>"Dial on Laptop Headset"</em>, the call will ring out through your laptop!
+              </p>
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <button
+                onClick={() => setLaptopDialTarget(null)}
+                className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition cursor-pointer"
+              >
+                Done
               </button>
             </div>
           </div>
